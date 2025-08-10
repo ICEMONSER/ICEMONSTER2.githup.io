@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tone.js CDN for sound generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -75,6 +77,13 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+        /* Keyframe animations for radar */
+        @keyframes ping-slow {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .animate-ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .animate-ping-slow-delay { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite 1s; } /* 1-second delay */
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -146,8 +155,8 @@
                 <input type="number" id="temperature" step="0.1" placeholder="Temperature (°C)" class="sci-fi-input" value="36.8">
                 <input type="number" id="oxygenLevel" step="0.1" placeholder="Oxygen Level (%)" class="sci-fi-input" value="98.5">
             </div>
-            <button id="checkHealthBtn" class="sci-fi-button w-full mb-4">ตรวจสอบสถานะสุขภาพ</button>
-            <div id="healthResult" class="result-box">
+            <button id="checkHealthBtn" class="sci-fi-button">ตรวจสอบสถานะสุขภาพ</button>
+            <div id="healthResult" class="result-box mt-4">
                 รอการตรวจสอบ...
             </div>
         </div>
@@ -159,8 +168,8 @@
             <textarea id="journalEntry" rows="4" placeholder="วันนี้ฉันเจอ..." class="w-full sci-fi-input mb-4 resize-y">
 วันนี้ฉันเจอแหล่งน้ำสะอาด และเจอเพื่อนผู้รอดชีวิตอีกคน เราแบ่งปันเสบียงกัน แต่ระหว่างทางก็เจอซอมบี้หลายตัว ต้องระวังมากขึ้น
             </textarea>
-            <button id="analyzeJournalBtn" class="sci-fi-button w-full mb-4">วิเคราะห์บันทึก</button>
-            <div id="journalResult" class="result-box">
+            <button id="analyzeJournalBtn" class="sci-fi-button">วิเคราะห์บันทึก</button>
+            <div id="journalResult" class="result-box mt-4">
                 รอการวิเคราะห์...
             </div>
         </div>
@@ -171,7 +180,65 @@
     </div>
 
     <script>
-        // JavaScript สำหรับการจำลองผลลัพธ์จากโมเดล Data Science
+        // เริ่มต้น AudioContext ของ Tone.js บน User Interaction แรก
+        let audioContextStarted = false;
+        function startAudioContext() {
+            if (!audioContextStarted) {
+                Tone.start();
+                audioContextStarted = true;
+                console.log("AudioContext started.");
+            }
+        }
+        
+        // สร้าง Synth สำหรับเสียงประเภทต่างๆ
+        const clickSynth = new Tone.Synth({
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.005, decay: 0.05, sustain: 0.1, release: 0.2 },
+            volume: -10 // ลดเสียงลงเล็กน้อย
+        }).toDestination();
+
+        const positiveSynth = new Tone.Synth({
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 },
+            volume: -8
+        }).toDestination();
+
+        const negativeSynth = new Tone.Synth({
+            oscillator: { type: "sawtooth" },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.6 },
+            volume: -8
+        }).toDestination();
+        
+        const neutralSynth = new Tone.Synth({
+            oscillator: { type: "square" },
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.3 },
+            volume: -10
+        }).toDestination();
+
+        // เสียง Radar (จะเริ่มเล่นเมื่อ AudioContext เริ่มทำงาน)
+        const radarSynth = new Tone.Synth({
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.05 },
+            volume: -20 // เสียงเบามาก เพื่อเป็น Background
+        }).toDestination();
+
+        let radarLoop;
+        function startRadarSound() {
+            if (!radarLoop) {
+                radarLoop = new Tone.Loop(time => {
+                    radarSynth.triggerAttackRelease("C3", "8n", time); // เล่นโน้ต C3 สั้นๆ
+                }, "1s").start(0); // เล่นทุก 1 วินาที
+            }
+        }
+
+        // เพิ่ม Event Listener สำหรับการคลิกปุ่มทั้งหมดเพื่อเริ่ม AudioContext และเล่นเสียงคลิก
+        document.querySelectorAll('.sci-fi-button').forEach(button => {
+            button.addEventListener('click', () => {
+                startAudioContext();
+                clickSynth.triggerAttackRelease("C5", "32n"); // เล่นโน้ต C5 สั้นๆ
+                startRadarSound(); // เริ่มเสียงเรดาร์เมื่อมีการกดปุ่ม
+            });
+        });
 
         // การจำลอง Survivor Radar
         const survivorInfo = document.getElementById('survivor-info');
@@ -191,6 +258,7 @@
             if (isNaN(lat) || isNaN(lon)) {
                 lootResult.textContent = "โปรดป้อนพิกัดที่ถูกต้อง";
                 lootResult.className = 'result-box status-negative';
+                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
                 return;
             }
 
@@ -202,7 +270,15 @@
             ];
             const randomIndex = Math.floor(Math.random() * probabilities.length);
             lootResult.textContent = probabilities[randomIndex];
-            lootResult.className = 'result-box status-normal'; // กำหนดสีตามผลลัพธ์
+            
+            // เล่นเสียงตามผลลัพธ์
+            if (randomIndex === 0 || randomIndex === 1 || randomIndex === 3) { // High probability
+                lootResult.className = 'result-box status-normal';
+                positiveSynth.triggerAttackRelease("C5", "8n");
+            } else { // Low probability
+                lootResult.className = 'result-box status-negative';
+                negativeSynth.triggerAttackRelease("G2", "8n");
+            }
         });
 
         // การจำลอง Health Status
@@ -215,6 +291,7 @@
             if (isNaN(heartRate) || isNaN(temperature) || isNaN(oxygenLevel)) {
                 healthResult.textContent = "โปรดป้อนข้อมูลสุขภาพที่ถูกต้อง";
                 healthResult.className = 'result-box status-negative';
+                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
                 return;
             }
 
@@ -225,15 +302,19 @@
             if (heartRate > 120 || heartRate < 50) {
                 status = "Anomaly: ชีพจรผิดปกติ! 🚨";
                 className = 'status-anomaly';
+                negativeSynth.triggerAttackRelease("C3", "4n"); // เสียงเตือนยาวหน่อย
             } else if (temperature > 37.5 || temperature < 35.5) {
                 status = "Anomaly: อุณหภูมิร่างกายผิดปกติ! 🌡️";
                 className = 'status-anomaly';
+                negativeSynth.triggerAttackRelease("C3", "4n");
             } else if (oxygenLevel < 92) {
                 status = "Anomaly: ระดับออกซิเจนต่ำ! 😷";
                 className = 'status-anomaly';
+                negativeSynth.triggerAttackRelease("C3", "4n");
             } else {
                  status = "ปกติ: สุขภาพอยู่ในเกณฑ์ดี ✅";
                  className = 'status-normal';
+                 positiveSynth.triggerAttackRelease("G4", "8n"); // เสียงปกติ
             }
 
             healthResult.textContent = status;
@@ -248,6 +329,7 @@
             if (journalEntry.trim() === "") {
                 journalResult.textContent = "โปรดป้อนบันทึกก่อนวิเคราะห์";
                 journalResult.className = 'result-box status-negative';
+                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
                 return;
             }
 
@@ -257,12 +339,15 @@
             if (journalEntry.toLowerCase().includes("สะอาด") || journalEntry.toLowerCase().includes("ดี") || journalEntry.toLowerCase().includes("ช่วยเหลือ")) {
                 sentiment = "Positive: มีเรื่องดีๆ เกิดขึ้น 😊";
                 className = 'status-positive';
+                positiveSynth.triggerAttackRelease("C5", "8n");
             } else if (journalEntry.toLowerCase().includes("ซอมบี้") || journalEntry.toLowerCase().includes("อันตราย") || journalEntry.toLowerCase().includes("ยาก") || journalEntry.toLowerCase().includes("ต้องระวัง")) {
                 sentiment = "Negative: มีความเสี่ยงหรืออุปสรรค 😔";
                 className = 'status-negative';
+                negativeSynth.triggerAttackRelease("G2", "8n");
             } else {
                 sentiment = "Neutral: เหตุการณ์ทั่วไป 🤔";
                 className = 'status-neutral';
+                neutralSynth.triggerAttackRelease("C4", "8n");
             }
 
             journalResult.textContent = sentiment;
