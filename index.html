@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Tone.js CDN for sound generation -->
+    <!-- Tone.js CDN for sound generation (for UI sound effects) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <style>
         body {
@@ -96,6 +96,32 @@
             ผลลัพธ์จะถูกจำลองใน JavaScript
         </p>
 
+        <!-- Background Music Control -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">เสียงพื้นหลัง (Background Music)</h2>
+            <p class="text-gray-300 mb-3">
+                ใส่ URL ของไฟล์เสียง MP3/WAV โดยตรง (ไม่รองรับลิงก์ YouTube โดยตรง):
+            </p>
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <input type="text" id="bgMusicUrl" placeholder="ใส่ URL ไฟล์เสียงที่นี่ (เช่น .mp3, .wav)" 
+                       class="flex-1 sci-fi-input" 
+                       value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"> <!-- ตัวอย่าง URL เพลง -->
+            </div>
+            <div class="flex flex-col md:flex-row items-center gap-4 mb-4">
+                <button id="loadAndPlayMusicBtn" class="sci-fi-button flex-1">
+                    <span id="playPauseText">เล่นเสียงพื้นหลัง</span>
+                </button>
+                <div class="flex items-center gap-2 flex-1">
+                    <label for="volumeSlider" class="text-gray-300 w-16">ระดับเสียง:</label>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5" class="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-gray-700">
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">
+                * ข้อจำกัด: ไม่สามารถใช้ลิงก์ YouTube โดยตรงได้ ต้องเป็นลิงก์ไฟล์เสียง MP3/WAV โดยตรงเท่านั้น
+            </p>
+        </div>
+
+
         <!-- Survivor Radar Section -->
         <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
             <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">ค้นหาผู้รอดชีวิต (Survivor Radar)</h2>
@@ -181,20 +207,22 @@
 
     <script>
         // เริ่มต้น AudioContext ของ Tone.js บน User Interaction แรก
+        // Tone.js จำเป็นต้องเริ่มเมื่อผู้ใช้มีการคลิกหรือแตะหน้าจอครั้งแรก
         let audioContextStarted = false;
         function startAudioContext() {
             if (!audioContextStarted) {
                 Tone.start();
                 audioContextStarted = true;
                 console.log("AudioContext started.");
+                startRadarSound(); // เริ่มเสียงเรดาร์เมื่อ AudioContext เริ่มทำงาน
             }
         }
         
-        // สร้าง Synth สำหรับเสียงประเภทต่างๆ
+        // สร้าง Synth สำหรับเสียงประเภทต่างๆ (ใช้ Tone.js สำหรับ Sound Effects ของ UI)
         const clickSynth = new Tone.Synth({
             oscillator: { type: "sine" },
             envelope: { attack: 0.005, decay: 0.05, sustain: 0.1, release: 0.2 },
-            volume: -10 // ลดเสียงลงเล็กน้อย
+            volume: -10 
         }).toDestination();
 
         const positiveSynth = new Tone.Synth({
@@ -215,30 +243,87 @@
             volume: -10
         }).toDestination();
 
-        // เสียง Radar (จะเริ่มเล่นเมื่อ AudioContext เริ่มทำงาน)
+        // เสียง Radar (Background effect)
         const radarSynth = new Tone.Synth({
             oscillator: { type: "sine" },
             envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.05 },
-            volume: -20 // เสียงเบามาก เพื่อเป็น Background
+            volume: -20 
         }).toDestination();
 
         let radarLoop;
         function startRadarSound() {
             if (!radarLoop) {
                 radarLoop = new Tone.Loop(time => {
-                    radarSynth.triggerAttackRelease("C3", "8n", time); // เล่นโน้ต C3 สั้นๆ
-                }, "1s").start(0); // เล่นทุก 1 วินาที
+                    radarSynth.triggerAttackRelease("C3", "8n", time); 
+                }, "1s").start(0); 
             }
         }
 
         // เพิ่ม Event Listener สำหรับการคลิกปุ่มทั้งหมดเพื่อเริ่ม AudioContext และเล่นเสียงคลิก
         document.querySelectorAll('.sci-fi-button').forEach(button => {
             button.addEventListener('click', () => {
-                startAudioContext();
-                clickSynth.triggerAttackRelease("C5", "32n"); // เล่นโน้ต C5 สั้นๆ
-                startRadarSound(); // เริ่มเสียงเรดาร์เมื่อมีการกดปุ่ม
+                startAudioContext(); // เริ่ม AudioContext เมื่อมีการคลิกครั้งแรก
+                clickSynth.triggerAttackRelease("C5", "32n"); // เล่นเสียงคลิก
             });
         });
+
+        // --- ส่วนควบคุมเสียงพื้นหลัง ---
+        const bgMusicUrlInput = document.getElementById('bgMusicUrl');
+        const loadAndPlayMusicBtn = document.getElementById('loadAndPlayMusicBtn');
+        const playPauseText = document.getElementById('playPauseText');
+        const volumeSlider = document.getElementById('volumeSlider');
+        let backgroundMusic = null; // ตัวแปรสำหรับเก็บ Element เสียงพื้นหลัง
+
+        function createOrUpdateBackgroundMusic(url) {
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic.remove(); // ลบ Element เก่าออก
+                backgroundMusic = null;
+            }
+
+            if (url) {
+                backgroundMusic = document.createElement('audio');
+                backgroundMusic.src = url;
+                backgroundMusic.loop = true; // ให้เล่นวนซ้ำ
+                backgroundMusic.autoplay = false; // จะควบคุมการเล่นด้วยปุ่ม
+                backgroundMusic.volume = volumeSlider.value; // ตั้งค่าระดับเสียงเริ่มต้น
+                document.body.appendChild(backgroundMusic); // เพิ่ม Element เข้าไปใน body
+            }
+        }
+
+        loadAndPlayMusicBtn.addEventListener('click', () => {
+            startAudioContext(); // ตรวจสอบให้แน่ใจว่า AudioContext เริ่มแล้ว
+            const url = bgMusicUrlInput.value.trim();
+            if (!url) {
+                playPauseText.textContent = "โปรดใส่ URL เพลง!";
+                return;
+            }
+
+            if (backgroundMusic && !backgroundMusic.paused) {
+                // ถ้าเพลงกำลังเล่นอยู่ ให้หยุด
+                backgroundMusic.pause();
+                playPauseText.textContent = "เล่นเสียงพื้นหลัง";
+            } else {
+                // ถ้าเพลงหยุดอยู่หรือยังไม่มี ให้โหลดและเล่น
+                createOrUpdateBackgroundMusic(url);
+                if (backgroundMusic) {
+                    backgroundMusic.play().then(() => {
+                        playPauseText.textContent = "หยุดเสียงพื้นหลัง";
+                    }).catch(error => {
+                        console.error("Error playing background music:", error);
+                        playPauseText.textContent = "เล่นไม่ได้! URL ผิด?";
+                    });
+                }
+            }
+        });
+
+        volumeSlider.addEventListener('input', () => {
+            if (backgroundMusic) {
+                backgroundMusic.volume = volumeSlider.value;
+            }
+        });
+        // --- สิ้นสุดส่วนควบคุมเสียงพื้นหลัง ---
+
 
         // การจำลอง Survivor Radar
         const survivorInfo = document.getElementById('survivor-info');
@@ -258,7 +343,7 @@
             if (isNaN(lat) || isNaN(lon)) {
                 lootResult.textContent = "โปรดป้อนพิกัดที่ถูกต้อง";
                 lootResult.className = 'result-box status-negative';
-                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
+                negativeSynth.triggerAttackRelease("G2", "8n"); 
                 return;
             }
 
@@ -271,11 +356,10 @@
             const randomIndex = Math.floor(Math.random() * probabilities.length);
             lootResult.textContent = probabilities[randomIndex];
             
-            // เล่นเสียงตามผลลัพธ์
-            if (randomIndex === 0 || randomIndex === 1 || randomIndex === 3) { // High probability
+            if (randomIndex === 0 || randomIndex === 1 || randomIndex === 3) { 
                 lootResult.className = 'result-box status-normal';
                 positiveSynth.triggerAttackRelease("C5", "8n");
-            } else { // Low probability
+            } else { 
                 lootResult.className = 'result-box status-negative';
                 negativeSynth.triggerAttackRelease("G2", "8n");
             }
@@ -291,18 +375,17 @@
             if (isNaN(heartRate) || isNaN(temperature) || isNaN(oxygenLevel)) {
                 healthResult.textContent = "โปรดป้อนข้อมูลสุขภาพที่ถูกต้อง";
                 healthResult.className = 'result-box status-negative';
-                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
+                negativeSynth.triggerAttackRelease("G2", "8n"); 
                 return;
             }
 
             let status = "Normal";
             let className = 'status-normal';
 
-            // จำลองเกณฑ์การตรวจจับ Anomaly แบบง่ายๆ
             if (heartRate > 120 || heartRate < 50) {
                 status = "Anomaly: ชีพจรผิดปกติ! 🚨";
                 className = 'status-anomaly';
-                negativeSynth.triggerAttackRelease("C3", "4n"); // เสียงเตือนยาวหน่อย
+                negativeSynth.triggerAttackRelease("C3", "4n"); 
             } else if (temperature > 37.5 || temperature < 35.5) {
                 status = "Anomaly: อุณหภูมิร่างกายผิดปกติ! 🌡️";
                 className = 'status-anomaly';
@@ -314,7 +397,7 @@
             } else {
                  status = "ปกติ: สุขภาพอยู่ในเกณฑ์ดี ✅";
                  className = 'status-normal';
-                 positiveSynth.triggerAttackRelease("G4", "8n"); // เสียงปกติ
+                 positiveSynth.triggerAttackRelease("G4", "8n"); 
             }
 
             healthResult.textContent = status;
@@ -329,11 +412,10 @@
             if (journalEntry.trim() === "") {
                 journalResult.textContent = "โปรดป้อนบันทึกก่อนวิเคราะห์";
                 journalResult.className = 'result-box status-negative';
-                negativeSynth.triggerAttackRelease("G2", "8n"); // เสียงเตือน
+                negativeSynth.triggerAttackRelease("G2", "8n"); 
                 return;
             }
 
-            // จำลอง Sentiment Analysis แบบง่ายๆ
             let sentiment = "neutral";
             let className = 'status-neutral';
             if (journalEntry.toLowerCase().includes("สะอาด") || journalEntry.toLowerCase().includes("ดี") || journalEntry.toLowerCase().includes("ช่วยเหลือ")) {
