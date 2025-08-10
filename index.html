@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LastLink - Data Science Demo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark background for sci-fi theme */
+            color: #e2e8f0; /* Light text color */
+        }
+        .sci-fi-border {
+            border: 2px solid;
+            border-image: linear-gradient(to right, #00ffc8, #0080ff) 1; /* Neon gradient border */
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.4), 0 0 15px rgba(0, 128, 255, 0.4);
+        }
+        .sci-fi-input {
+            background-color: #1a202c;
+            border: 1px solid #00ffc8;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 255, 200, 0.2);
+            transition: all 0.2s ease-in-out;
+        }
+        .sci-fi-input:focus {
+            border-color: #0080ff;
+            box-shadow: 0 0 10px rgba(0, 128, 255, 0.6);
+        }
+        .sci-fi-button {
+            background: linear-gradient(135deg, #00ffc8, #0080ff); /* Neon gradient button */
+            color: #0d1117; /* Dark text on neon button */
+            font-weight: bold;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+            border: none;
+        }
+        .sci-fi-button:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.8), 0 0 15px rgba(0, 128, 255, 0.8);
+            transform: translateY(-2px);
+        }
+        .result-box {
+            background-color: #1a202c;
+            border: 1px solid #0080ff;
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            color: #00ffc8;
+            box-shadow: 0 0 10px rgba(0, 128, 255, 0.4);
+        }
+        .status-normal { color: #00ffc8; } /* Green */
+        .status-anomaly { color: #ff007f; } /* Pink/Red for warning */
+        .status-positive { color: #00ffc8; }
+        .status-negative { color: #ff007f; }
+        .status-neutral { color: #ffe600; } /* Yellow */
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .grid-cols-2-md {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-[#13171e] rounded-xl sci-fi-border p-6 md:p-8 space-y-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-[#00ffc8] drop-shadow-lg">
+            LASTLINK <span class="text-[#0080ff]">- DATA SCIENCE DEMO</span>
+        </h1>
+        <p class="text-center text-gray-400 mb-8">
+            นี่คือหน้าเว็บจำลองสำหรับแสดงการทำงานของโมเดล Data Science ในแอป "LastLink" 
+            ผลลัพธ์จะถูกจำลองใน JavaScript
+        </p>
+
+        <!-- Survivor Radar Section -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">ค้นหาผู้รอดชีวิต (Survivor Radar)</h2>
+            <div class="relative w-full h-48 md:h-64 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                <img src="https://placehold.co/600x400/0a101d/00ffc8?text=RADAR+SCAN" alt="Radar Scan" class="w-full h-full object-cover opacity-70">
+                <div class="absolute inset-0 flex items-center justify-center text-center text-lg md:text-2xl font-mono text-[#00ffc8]">
+                    <span class="animate-pulse">กำลังสแกน...</span>
+                    <div class="absolute border border-[#00ffc8] rounded-full w-48 h-48 animate-ping-slow"></div>
+                    <div class="absolute border border-[#0080ff] rounded-full w-32 h-32 animate-ping-slow-delay"></div>
+                </div>
+            </div>
+            <p class="mt-4 text-sm md:text-base text-gray-300">
+                <span class="font-bold text-[#00ffc8]">สถานะ:</span> ตรวจพบสัญญาณผู้รอดชีวิตในรัศมี 2.5 KM 🧭
+                <br>
+                <span class="font-bold text-[#00ffc8]">ข้อมูล:</span> <span id="survivor-info">กำลังประมวลผล...</span>
+            </p>
+        </div>
+
+        <!-- Loot Locator Section -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">หาเสบียงใกล้ฉัน (Loot Locator)</h2>
+            <p class="text-gray-300 mb-3">จำลองการป้อนข้อมูลพิกัดเพื่อหาเสบียง:</p>
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <input type="text" id="lootLat" placeholder="Latitude (เช่น 13.7)" class="flex-1 sci-fi-input" value="13.75">
+                <input type="text" id="lootLon" placeholder="Longitude (เช่น 100.5)" class="flex-1 sci-fi-input" value="100.50">
+                <button id="findLootBtn" class="sci-fi-button">ค้นหาเสบียง</button>
+            </div>
+            <div id="lootResult" class="result-box">
+                รอการค้นหาเสบียง...
+            </div>
+        </div>
+
+        <!-- Safe Zone Map Section -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">แผนที่ปลอดภัย (Safe Zone Map)</h2>
+            <div class="relative w-full h-48 md:h-64 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                <img src="https://placehold.co/600x400/0a101d/00ffc8?text=SAFE+ZONE+MAP" alt="Safe Zone Map" class="w-full h-full object-cover opacity-70">
+                <div class="absolute inset-0 flex items-center justify-center text-center text-lg md:text-2xl font-mono text-[#00ffc8]">
+                    <span class="text-xl md:text-3xl font-bold">แผนที่โซนปลอดภัย 🗺️</span>
+                </div>
+                <div class="absolute top-2 left-2 bg-green-700 bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">อัปเดตล่าสุด: 2 นาทีที่แล้ว</div>
+                <div class="absolute bottom-2 right-2 bg-red-700 bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">โซนอันตรายสูง: 3 จุด</div>
+            </div>
+            <p class="mt-4 text-sm md:text-base text-gray-300">
+                <span class="font-bold text-[#00ffc8]">สถานะ:</span> เส้นทางแนะนำ: หลีกเลี่ยงถนนใหญ่สายหลัก
+                <br>
+                <span class="font-bold text-[#00ffc8]">ข้อมูล:</span> <span id="safe-zone-info">ประมวลผลข้อมูลจากเครือข่าย...</span>
+            </p>
+        </div>
+
+        <!-- Health Status Section -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">ระบบติดตามสถานะชีวิต</h2>
+            <p class="text-gray-300 mb-3">ป้อนข้อมูลเพื่อตรวจสอบสถานะสุขภาพ:</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <input type="number" id="heartRate" placeholder="Heart Rate (bpm)" class="sci-fi-input" value="75">
+                <input type="number" id="temperature" step="0.1" placeholder="Temperature (°C)" class="sci-fi-input" value="36.8">
+                <input type="number" id="oxygenLevel" step="0.1" placeholder="Oxygen Level (%)" class="sci-fi-input" value="98.5">
+            </div>
+            <button id="checkHealthBtn" class="sci-fi-button w-full mb-4">ตรวจสอบสถานะสุขภาพ</button>
+            <div id="healthResult" class="result-box">
+                รอการตรวจสอบ...
+            </div>
+        </div>
+
+        <!-- Survival Journal Section -->
+        <div class="bg-[#1a202c] p-6 rounded-xl sci-fi-border">
+            <h2 class="text-2xl font-bold text-[#00ffc8] mb-4">บันทึกการเอาชีวิตรอด (Survival Journal)</h2>
+            <p class="text-gray-300 mb-3">เขียนบันทึกประจำวันเพื่อรับ Insight จาก AI:</p>
+            <textarea id="journalEntry" rows="4" placeholder="วันนี้ฉันเจอ..." class="w-full sci-fi-input mb-4 resize-y">
+วันนี้ฉันเจอแหล่งน้ำสะอาด และเจอเพื่อนผู้รอดชีวิตอีกคน เราแบ่งปันเสบียงกัน แต่ระหว่างทางก็เจอซอมบี้หลายตัว ต้องระวังมากขึ้น
+            </textarea>
+            <button id="analyzeJournalBtn" class="sci-fi-button w-full mb-4">วิเคราะห์บันทึก</button>
+            <div id="journalResult" class="result-box">
+                รอการวิเคราะห์...
+            </div>
+        </div>
+
+        <p class="text-center text-gray-500 text-sm mt-8">
+            สร้างโดย LastLink Data Science Team 2025
+        </p>
+    </div>
+
+    <script>
+        // JavaScript สำหรับการจำลองผลลัพธ์จากโมเดล Data Science
+
+        // การจำลอง Survivor Radar
+        const survivorInfo = document.getElementById('survivor-info');
+        const survivorNames = ['ผู้รอดชีวิต A (500m ตะวันออก)', 'ผู้รอดชีวิต B (1.2km ตะวันตกเฉียงเหนือ)', 'ผู้รอดชีวิต C (800m ใต้)'];
+        let currentSurvivorIndex = 0;
+        setInterval(() => {
+            survivorInfo.textContent = survivorNames[currentSurvivorIndex];
+            currentSurvivorIndex = (currentSurvivorIndex + 1) % survivorNames.length;
+        }, 3000); // เปลี่ยนข้อมูลทุก 3 วินาที
+
+        // การจำลอง Loot Locator
+        document.getElementById('findLootBtn').addEventListener('click', () => {
+            const lat = parseFloat(document.getElementById('lootLat').value);
+            const lon = parseFloat(document.getElementById('lootLon').value);
+            const lootResult = document.getElementById('lootResult');
+
+            if (isNaN(lat) || isNaN(lon)) {
+                lootResult.textContent = "โปรดป้อนพิกัดที่ถูกต้อง";
+                lootResult.className = 'result-box status-negative';
+                return;
+            }
+
+            const probabilities = [
+                "มีโอกาสสูงที่จะพบน้ำดื่มสะอาด! 💧",
+                "น่าจะพบอาหารกระป๋องในอาคารใกล้เคียง 🥫",
+                "โอกาสน้อยที่จะพบยารักษาโรคในพื้นที่นี้ 🩹",
+                "ตรวจพบสัญญาณของที่พักปลอดภัยใกล้ๆ 🏠"
+            ];
+            const randomIndex = Math.floor(Math.random() * probabilities.length);
+            lootResult.textContent = probabilities[randomIndex];
+            lootResult.className = 'result-box status-normal'; // กำหนดสีตามผลลัพธ์
+        });
+
+        // การจำลอง Health Status
+        document.getElementById('checkHealthBtn').addEventListener('click', () => {
+            const heartRate = parseInt(document.getElementById('heartRate').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const oxygenLevel = parseFloat(document.getElementById('oxygenLevel').value);
+            const healthResult = document.getElementById('healthResult');
+
+            if (isNaN(heartRate) || isNaN(temperature) || isNaN(oxygenLevel)) {
+                healthResult.textContent = "โปรดป้อนข้อมูลสุขภาพที่ถูกต้อง";
+                healthResult.className = 'result-box status-negative';
+                return;
+            }
+
+            let status = "Normal";
+            let className = 'status-normal';
+
+            // จำลองเกณฑ์การตรวจจับ Anomaly แบบง่ายๆ
+            if (heartRate > 120 || heartRate < 50) {
+                status = "Anomaly: ชีพจรผิดปกติ! 🚨";
+                className = 'status-anomaly';
+            } else if (temperature > 37.5 || temperature < 35.5) {
+                status = "Anomaly: อุณหภูมิร่างกายผิดปกติ! 🌡️";
+                className = 'status-anomaly';
+            } else if (oxygenLevel < 92) {
+                status = "Anomaly: ระดับออกซิเจนต่ำ! 😷";
+                className = 'status-anomaly';
+            } else {
+                 status = "ปกติ: สุขภาพอยู่ในเกณฑ์ดี ✅";
+                 className = 'status-normal';
+            }
+
+            healthResult.textContent = status;
+            healthResult.className = 'result-box ' + className;
+        });
+
+        // การจำลอง Survival Journal Analysis
+        document.getElementById('analyzeJournalBtn').addEventListener('click', () => {
+            const journalEntry = document.getElementById('journalEntry').value;
+            const journalResult = document.getElementById('journalResult');
+
+            if (journalEntry.trim() === "") {
+                journalResult.textContent = "โปรดป้อนบันทึกก่อนวิเคราะห์";
+                journalResult.className = 'result-box status-negative';
+                return;
+            }
+
+            // จำลอง Sentiment Analysis แบบง่ายๆ
+            let sentiment = "neutral";
+            let className = 'status-neutral';
+            if (journalEntry.toLowerCase().includes("สะอาด") || journalEntry.toLowerCase().includes("ดี") || journalEntry.toLowerCase().includes("ช่วยเหลือ")) {
+                sentiment = "Positive: มีเรื่องดีๆ เกิดขึ้น 😊";
+                className = 'status-positive';
+            } else if (journalEntry.toLowerCase().includes("ซอมบี้") || journalEntry.toLowerCase().includes("อันตราย") || journalEntry.toLowerCase().includes("ยาก") || journalEntry.toLowerCase().includes("ต้องระวัง")) {
+                sentiment = "Negative: มีความเสี่ยงหรืออุปสรรค 😔";
+                className = 'status-negative';
+            } else {
+                sentiment = "Neutral: เหตุการณ์ทั่วไป 🤔";
+                className = 'status-neutral';
+            }
+
+            journalResult.textContent = sentiment;
+            journalResult.className = 'result-box ' + className;
+        });
+
+        // Initial update for survivor info
+        survivorInfo.textContent = survivorNames[currentSurvivorIndex];
+
+    </script>
+</body>
+</html>
